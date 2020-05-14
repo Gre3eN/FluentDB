@@ -9,6 +9,7 @@ namespace FluentDB.Services
     public interface IConfigureQuerable<TParam> where TParam : DbParameter
     {
         IConfigureQuerable<TParam> CommandType(CommandType type);
-        ISingleParameterQuerable<TParam> AsSingle();
+        ISingleParameterQuerable<TParam> With();
+        IResult Run();
     }
 }

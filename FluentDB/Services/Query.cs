@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FluentDB.Command;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
@@ -8,40 +9,53 @@ namespace FluentDB.Services
 {
     public class Query<TCommand> where TCommand : DbCommand, new()
     {
-        private static string connectionString;
+        #region static
+        private static readonly Dictionary<Type, StaticCommandConfig> commandConfigurations
+            = new Dictionary<Type, StaticCommandConfig>();
 
-        public static void ConfigureConnection(string connectionStr)
+        public static void ConfigureConnection(string connectionString)
         {
-            connectionString = connectionStr;
+            GetCommandConfig().ConnectionString = connectionString;
         }
 
         public static Query<TCommand> New()
         {
-            return new Query<TCommand>(connectionString);
+            return new Query<TCommand>(GetCommandConfig());
         }
 
-        private readonly string? connectionStr;
-
-        private Query(string? connectionStr)
+        internal static Query<TCommand> New<T>(IEnumerable<T> collection)
         {
-            this.connectionStr = connectionStr;
+
         }
 
-        internal INewQuerable<TParam> WithConnection<TCon, TTrans, TParam>() 
+        private static StaticCommandConfig GetCommandConfig()
+        {
+            if (commandConfigurations.ContainsKey(typeof(TCommand)))
+            {
+                return commandConfigurations[typeof(TCommand)];
+            }
+            var newCommandConfig = new StaticCommandConfig();
+            commandConfigurations.Add(typeof(TCommand), newCommandConfig);
+            return newCommandConfig;
+        }
+
+        #endregion static
+
+        private readonly StaticCommandConfig commandConfig;
+
+        private Query(StaticCommandConfig commandConfig)
+        {
+            this.commandConfig = commandConfig;
+        }
+
+        internal INewQuerable<TParam> WithDefaultConnection<TCon, TTrans, TParam, TDbEx>() 
             where TCon : DbConnection, new()
             where TTrans : DbTransaction
             where TParam : DbParameter
+            where TDbEx : DbException
         {
-            var con = new TCon
-            {
-                ConnectionString = connectionStr
-                ?? throw new ArgumentException("No default connection string defined.")
-            };
-            var command = new TCommand
-            {
-                Connection = con
-            };
-            return new Querable<TCommand, TCon, TTrans, TParam>(command);
+            return new Querable<TCommand, TCon, TTrans, TParam, TDbEx>(
+                new CommandEngine<TCommand, TCon, TDbEx>(commandConfig));
         }
     }
 }

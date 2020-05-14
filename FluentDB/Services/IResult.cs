@@ -11,6 +11,6 @@ namespace FluentDB.Services
         T As<T>(Func<DbDataReader, T> read);
         T AsScalar<T>(Func<object, T> convert);
         void AsNonQuery();
-        DbParameterCollection Parameters { get; }
+        Dictionary<string, DbParameter> Parameters { get; }
     }
 }
