@@ -11,17 +11,24 @@ namespace FluentDB.Command
         where TDbEx : DbException
     {
         private readonly IteratingCommandConfig<TItem> commandConfig;
-        private readonly List<CommandConfiguration<TCommand>> configurations;
+        private readonly List<Action<TCommand>> configurations;
+        private readonly List<Action<TCommand, TItem>> paramConfiguration;
 
         public IteratingCommandEngine(IteratingCommandConfig<TItem> commandConfig)
         {
             this.commandConfig = commandConfig ?? throw new ArgumentNullException(nameof(commandConfig));
-            this.configurations = new List<CommandConfiguration<TCommand>>();
+            configurations = new List<Action<TCommand>>();
+            paramConfiguration = new List<Action<TCommand, TItem>>();
         }
 
-        public void AddConfiguration(CommandConfiguration<TCommand> configuration)
+        public void AddConfiguration(Action<TCommand> configuration)
         {
             configurations.Add(configuration);
+        }
+
+        public void AddParamConfiguration(Action<TCommand, TItem> setParameter)
+        {
+            paramConfiguration.Add(setParameter);
         }
 
         public void Run(Action<TCommand> commandAction)
@@ -29,13 +36,13 @@ namespace FluentDB.Command
             try
             {
                 using var command = new TCommand();
-                configurations.ForEach(c => c.Execute(command));
+                configurations.ForEach(c => c(command));
                 using var connection = command.Connection
                     ?? new TCon { ConnectionString = commandConfig.Static.ConnectionString };
                 connection.Open();
                 foreach (var item in commandConfig.Collection)
                 {
-                    configurations.ForEach(c => c.Execute(command, item));
+                    paramConfiguration.ForEach(c => c(command, item));
                     commandAction(command);
                 }
             }
@@ -43,11 +50,6 @@ namespace FluentDB.Command
             {
                 //TODO
             }
-        }
-
-        public T Run<T>(Func<TCommand, T> commandFunction)
-        {
-            throw new NotImplementedException();
         }
     }
 }

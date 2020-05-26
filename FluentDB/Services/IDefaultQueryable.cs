@@ -4,7 +4,7 @@ using System.Text;
 
 namespace FluentDB.Services
 {
-    public interface IDefaultQuerable
+    public interface IDefaultQueryable
     {
 
     }

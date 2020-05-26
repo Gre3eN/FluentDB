@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace FluentDB.Services
+namespace FluentDB.Services.Multiple
 {
     public interface IRunMultiple
     {

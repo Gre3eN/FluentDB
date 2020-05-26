@@ -7,21 +7,21 @@ using System.Text;
 
 namespace FluentDB.Command
 {
-    public class CommandEngine<TCommand, TCon, TDbEx> : ICommandEngine<TCommand> 
+    public class CommandEngine<TCommand, TCon, TDbEx> : ICommandEngine<TCommand>, IReturnCommandEngine<TCommand>
         where TCommand : DbCommand, new()
         where TCon : DbConnection, new()
         where TDbEx : DbException
     {
         private readonly StaticCommandConfig commandConfig;
-        private readonly List<CommandConfiguration<TCommand>> configurations;
+        private readonly List<Action<TCommand>> configurations;
 
         public CommandEngine(StaticCommandConfig commandConfig)
         {
             this.commandConfig = commandConfig ?? throw new ArgumentNullException(nameof(commandConfig));
-            this.configurations = new List<CommandConfiguration<TCommand>>();
+            this.configurations = new List<Action<TCommand>>();
         }
 
-        public void AddConfiguration(CommandConfiguration<TCommand> configuration)
+        public void AddConfiguration(Action<TCommand> configuration)
         {
             configurations.Add(configuration);
         }
@@ -31,7 +31,7 @@ namespace FluentDB.Command
             try
             {
                 using var command = new TCommand();
-                configurations.ForEach(c => c.Execute(command));
+                configurations.ForEach(c => c(command));
                 using var connection = command.Connection
                     ?? new TCon { ConnectionString = commandConfig.ConnectionString };
                 connection.Open();
@@ -48,7 +48,7 @@ namespace FluentDB.Command
             try
             {
                 using var command = new TCommand();
-                configurations.ForEach(c => c.Execute(command));
+                configurations.ForEach(c => c(command));
                 using var connection = command.Connection
                     ?? new TCon { ConnectionString = commandConfig.ConnectionString };
                 connection.Open();

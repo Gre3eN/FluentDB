@@ -4,6 +4,7 @@ using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace FluentDB
 {
@@ -22,11 +23,17 @@ namespace FluentDB
                 .AsEnumerable(reader =>
                 {
                     return reader.GetString(reader.GetOrdinal("bla"));
-                })
+                });
+        }
 
-
-                .AsDatabaseQuery()
-                .For("");
+        public void TestCollection(IEnumerable<string> collection)
+        {
+            collection.AsDatabaseQuery<SqlCommand, string>()
+                .For("")
+                .With()
+                .Parameter("id", SqlDbType.Int, item => item)
+                .Run()
+                .AsNonQuery();
         }
     }
 }
