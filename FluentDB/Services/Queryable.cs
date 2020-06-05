@@ -28,6 +28,40 @@ namespace FluentDB.Services
             Parameters = new Dictionary<string, DbParameter>();
         }
 
+        public IConfigureQueryable<TParam> For(string queryText)
+        {
+            commandEngine.AddConfiguration(command => command.CommandText = queryText);
+            return this;
+        }
+
+        public IConfigureQueryable<TParam> CommandType(CommandType type)
+        {
+            commandEngine.AddConfiguration(command => command.CommandType = type);
+            return this;
+        }
+
+        public ISingleParameterQueryable<TParam> WithParameters()
+        {
+            return this;
+        }
+
+        public ISingleParameterQueryable<TParam> Parameter(Action<TParam> configure)
+        {
+            commandEngine.AddConfiguration(command => 
+            {
+                var param = (TParam)command.CreateParameter();
+                configure(param);
+                command.Parameters.Add(param);
+                Parameters.Add(param.ParameterName, param);
+            });
+            return this;
+        }
+
+        public IResult Run()
+        {
+            return this;
+        }
+
         public T As<T>(Func<DbDataReader, T> read)
         {
             return commandEngine.Run(command =>
@@ -63,40 +97,6 @@ namespace FluentDB.Services
         public T AsScalar<T>(Func<object, T> convert)
         {
             return commandEngine.Run(command => convert(command.ExecuteScalar()));
-        }
-
-        public ISingleParameterQueryable<TParam> With()
-        {
-            return this;
-        }
-
-        public IConfigureQueryable<TParam> CommandType(CommandType type)
-        {
-            commandEngine.AddConfiguration(command => command.CommandType = type);
-            return this;
-        }
-
-        public IConfigureQueryable<TParam> For(string queryText)
-        {
-            commandEngine.AddConfiguration(command => command.CommandText = queryText);
-            return this;
-        }
-
-        public ISingleParameterQueryable<TParam> Parameter(Action<TParam> configure)
-        {
-            commandEngine.AddConfiguration(command => 
-            {
-                var param = (TParam)command.CreateParameter();
-                configure(param);
-                command.Parameters.Add(param);
-                Parameters.Add(param.ParameterName, param);
-            });
-            return this;
-        }
-
-        public IResult Run()
-        {
-            return this;
         }
     }
 }

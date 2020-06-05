@@ -10,13 +10,15 @@ namespace FluentDB
 {
     public class TemporaryTestClass
     {
+        public string TestProperty { get; }
+
         public void Test()
         {
             Query<SqlCommand>.New()
                 .WithDefaultConnection()
                 .For("SELECT * FROM Table WHERE Id = @Id AND Something = @Something")
                 //.CommandType(CommandType.StoredProcedure)
-                .With()
+                .WithParameters()
                 .Parameter("@Id", SqlDbType.Int, 1)
                 .Parameter("@Something", SqlDbType.VarChar, "bla")
                 .Run()
@@ -26,12 +28,14 @@ namespace FluentDB
                 });
         }
 
-        public void TestCollection(IEnumerable<string> collection)
+        public void TestCollection(IEnumerable<TemporaryTestClass> collection)
         {
-            collection.AsDatabaseQuery<SqlCommand, string>()
+            collection.AsDatabaseQuery()
+                .Using<SqlCommand>()
+                .WithDefaultConnection()
                 .For("")
-                .With()
-                .Parameter("id", SqlDbType.Int, item => item)
+                .WithParameters()
+                .Parameter("id", SqlDbType.Int, item => item.TestProperty)
                 .Run()
                 .AsNonQuery();
         }

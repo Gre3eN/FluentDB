@@ -28,9 +28,10 @@ namespace FluentDB.Services.Multiple
             Parameters = new Dictionary<string, DbParameter>();
         }
 
-        public void AsNonQuery()
+        public IMultipleConfigureQueryable<TItem, TParam> For(string queryText)
         {
-            commandEngine.Run(command => command.ExecuteNonQuery());
+            commandEngine.AddConfiguration(command => command.CommandText = queryText);
+            return this;
         }
 
         public IMultipleConfigureQueryable<TItem, TParam> CommandType(CommandType type)
@@ -39,13 +40,13 @@ namespace FluentDB.Services.Multiple
             return this;
         }
 
-        public IMultipleConfigureQueryable<TItem, TParam> For(string queryText)
+        public IMultipleParameterQueryable<TItem, TParam> WithParameters()
         {
-            commandEngine.AddConfiguration(command => command.CommandText = queryText);
             return this;
         }
 
-        public IMultipleParameterQueryable<TItem, TParam> Parameter(string paramId, Action<TParam, TItem> configure)
+        public IMultipleParameterQueryable<TItem, TParam> Parameter(string paramId, 
+            Action<TParam, TItem> configure)
         {
             commandEngine.AddParamConfiguration((command, item) =>
             {
@@ -68,9 +69,9 @@ namespace FluentDB.Services.Multiple
             throw new NotImplementedException();
         }
 
-        public IMultipleParameterQueryable<TItem, TParam> With()
+        public void AsNonQuery()
         {
-            return this;
+            commandEngine.Run(command => command.ExecuteNonQuery());
         }
     }
 }

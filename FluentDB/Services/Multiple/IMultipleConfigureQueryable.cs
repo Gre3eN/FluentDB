@@ -9,7 +9,7 @@ namespace FluentDB.Services.Multiple
     public interface IMultipleConfigureQueryable<TItem, TParam> where TParam : DbParameter
     {
         IMultipleConfigureQueryable<TItem, TParam> CommandType(CommandType type);
-        IMultipleParameterQueryable<TItem, TParam> With();
+        IMultipleParameterQueryable<TItem, TParam> WithParameters();
         IRunMultiple Run();
     }
 }

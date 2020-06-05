@@ -48,6 +48,7 @@ namespace FluentDB.Command
             }
             catch (TDbEx ex)
             {
+                throw ex;
                 //TODO
             }
         }

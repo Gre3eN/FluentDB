@@ -39,6 +39,7 @@ namespace FluentDB.Command
             }
             catch (TDbEx ex)
             {
+                throw ex;
                 //TODO
             }
         }
@@ -56,7 +57,9 @@ namespace FluentDB.Command
             }
             catch (TDbEx ex)
             {
-                throw new InvalidOperationException();
+                throw ex;
+                //TODO
+                //throw new InvalidOperationException();
             }
         }
     }
