@@ -1,4 +1,5 @@
 ﻿using FluentDB.Command;
+using FluentDB.Helper;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -7,53 +8,72 @@ using System.Text;
 
 namespace FluentDB.Services
 {
-    public class Queryable<TCommand, TCon, TTrans, TParam, TDbEx> 
-        : INewQueryable<TParam>, 
-        IConfigureQueryable<TParam>,
-        ISingleParameterQueryable<TParam>,
+    public class Queryable
+        : INewQueryable, 
+        IConfigureQueryable,
+        IFirstParameterQueryable,
+        IParameterQueryable,
         IResult
-        where TCommand : DbCommand, new()
-        where TCon : DbConnection, new()
-        where TTrans : DbTransaction
-        where TParam : DbParameter
-        where TDbEx : DbException
     {
-        private readonly CommandEngine<TCommand, TCon, TDbEx> commandEngine;
+        private readonly CommandEngine commandEngine;
+
+        private string currentParamId;
 
         public Dictionary<string, DbParameter> Parameters { get; }
 
-        public Queryable(CommandEngine<TCommand, TCon, TDbEx> commandEngine)
+        public Queryable(CommandEngine commandEngine)
         {
             this.commandEngine = commandEngine ?? throw new ArgumentNullException(nameof(commandEngine));
             Parameters = new Dictionary<string, DbParameter>();
         }
 
-        public IConfigureQueryable<TParam> For(string queryText)
+        public IConfigureQueryable For(string queryText)
         {
             commandEngine.AddConfiguration(command => command.CommandText = queryText);
             return this;
         }
 
-        public IConfigureQueryable<TParam> CommandType(CommandType type)
+        public IConfigureQueryable CommandType(CommandType type)
         {
             commandEngine.AddConfiguration(command => command.CommandType = type);
             return this;
         }
 
-        public ISingleParameterQueryable<TParam> WithParameters()
+        public IFirstParameterQueryable WithParameters()
         {
             return this;
         }
 
-        public ISingleParameterQueryable<TParam> Parameter(Action<TParam> configure)
+        public IParameterQueryable Parameter(string paramId, object value)
         {
-            commandEngine.AddConfiguration(command => 
+            commandEngine.AddConfiguration(command =>
             {
-                var param = (TParam)command.CreateParameter();
-                configure(param);
+                var param = command.CreateParameter();
+                param.ParameterName = paramId;
+                param.Value = value;
+                param.DbType = TypeConverter.DbTypeFrom(value.GetType());
                 command.Parameters.Add(param);
                 Parameters.Add(param.ParameterName, param);
             });
+            return this;
+        }
+
+        public IParameterQueryable ExplicitType(DbType type)
+        {
+            commandEngine.AddConfiguration(command => command.Parameters[currentParamId].DbType = type);
+            return this;
+        }
+
+        public IParameterQueryable Direction(ParameterDirection direction)
+        {
+            commandEngine.AddConfiguration(command => command.Parameters[currentParamId].Direction = direction);
+            return this;
+        }
+
+        internal IParameterQueryable ConfigureCurrentParameter<TParam>(Action<TParam> configure)
+            where TParam : DbParameter
+        {
+            commandEngine.AddConfiguration(command => configure((TParam)command.Parameters[currentParamId]));
             return this;
         }
 
@@ -80,7 +100,7 @@ namespace FluentDB.Services
             return commandEngine.Run(command => ReadEnumerable(command, read));
         }
 
-        private IEnumerable<T> ReadEnumerable<T>(TCommand command, Func<DbDataReader, T> read)
+        private IEnumerable<T> ReadEnumerable<T>(DbCommand command, Func<DbDataReader, T> read)
         {
             using var reader = command.ExecuteReader();
             while (reader.Read())

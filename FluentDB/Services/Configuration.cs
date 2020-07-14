@@ -11,21 +11,35 @@ namespace FluentDB.Services
         private static readonly Dictionary<Type, StaticCommandConfig> commandConfigurations
             = new Dictionary<Type, StaticCommandConfig>();
 
-        public static Configuration<TCommand> For<TCommand>()
+        public static Type ActiveCommandType { get; private set; }
+
+        public static Configuration<TCommand> New<TCommand>()
             where TCommand : DbCommand
         {
+            if (ActiveCommandType == null)
+            {
+                ActiveCommandType = typeof(TCommand);
+            }
             return new Configuration<TCommand>(commandConfigurations[typeof(TCommand)]);
         }
 
-        internal static StaticCommandConfig GetCommandConfig<TCommand>()
-            where TCommand : DbCommand
+        public static void SetActiveCommandTypeTo<TCommand>() where TCommand : DbCommand
         {
-            if (commandConfigurations.ContainsKey(typeof(TCommand)))
+            ActiveCommandType = typeof(TCommand);
+        }
+
+        internal static StaticCommandConfig GetCommandConfig(Type commandType)
+        {
+            if (commandType == null)
             {
-                return commandConfigurations[typeof(TCommand)];
+                commandType = ActiveCommandType ?? throw new ArgumentNullException(nameof(ActiveCommandType));
+            }
+            if (commandConfigurations.ContainsKey(commandType))
+            {
+                return commandConfigurations[commandType];
             }
             var newCommandConfig = new StaticCommandConfig();
-            commandConfigurations.Add(typeof(TCommand), newCommandConfig);
+            commandConfigurations.Add(commandType, newCommandConfig);
             return newCommandConfig;
         }
     }

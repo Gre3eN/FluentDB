@@ -1,4 +1,5 @@
 ﻿using FluentDB.Command;
+using FluentDB.Factories;
 using FluentDB.Services.Multiple;
 using System;
 using System.Collections.Generic;
@@ -7,36 +8,30 @@ using System.Text;
 
 namespace FluentDB.Services
 {
-    public static class QueryableFactory
+    internal static class QueryableFactory
     {
-        internal static INewQueryable<TParam> New<TCommand, TCon, TTrans, TParam, TDbEx>(string connection)
-            where TCommand : DbCommand, new()
-            where TCon : DbConnection, new()
-            where TTrans : DbTransaction
-            where TParam : DbParameter
-            where TDbEx : DbException
+        internal static INewQueryable New(Type commandType, string connection = null)
         {
-            return new Queryable<TCommand, TCon, TTrans, TParam, TDbEx>(
-                new CommandEngine<TCommand, TCon, TDbEx>(GetConfiguration<TCommand>(connection)));
+            return new Queryable(new CommandEngine(
+                CommandFactory.New(commandType),
+                ConnectionFactory.New(commandType),
+                GetConfiguration(commandType, connection)
+                ));
         }
 
-        internal static IMultipleQueryable<TItem, TParam> NewMultiple<TItem, TCommand, TCon, TTrans, TParam, TDbEx>(
-            string connection, IEnumerable<TItem> collection)
-            where TCommand : DbCommand, new()
-            where TCon : DbConnection, new()
-            where TTrans : DbTransaction
-            where TParam : DbParameter
-            where TDbEx : DbException
+        internal static IMultipleQueryable<TItem> NewMultiple<TItem>(
+            IEnumerable<TItem> collection, Type commandType, string connection = null)
         {
-            return new MultipleQueryable<TItem, TCommand, TCon, TTrans, TParam, TDbEx>(
-                new IteratingCommandEngine<TItem, TCommand, TCon, TDbEx>(
-                    GetMultipleConfig<TItem, TCommand>(connection, collection)));
+            return new MultipleQueryable<TItem>(new IteratingCommandEngine<TItem>(
+                CommandFactory.New(commandType),
+                ConnectionFactory.New(commandType),
+                GetMultipleConfig(commandType, collection, connection)
+                ));
         }
 
-        private static StaticCommandConfig GetConfiguration<TCommand>(string connection)
-            where TCommand : DbCommand
+        private static StaticCommandConfig GetConfiguration(Type commandType, string connection)
         {
-            var configuration = Configuration.GetCommandConfig<TCommand>();
+            var configuration = Configuration.GetCommandConfig(commandType);
             if (string.IsNullOrEmpty(connection))
             {
                 return configuration;
@@ -46,13 +41,13 @@ namespace FluentDB.Services
             return copy;
         }
 
-        private static IteratingCommandConfig<TItem> GetMultipleConfig<TItem, TCommand>(
-            string connection, IEnumerable<TItem> collection) where TCommand : DbCommand
+        private static IteratingCommandConfig<TItem> GetMultipleConfig<TItem>(
+            Type commandType, IEnumerable<TItem> collection, string connection)
         {
             return new IteratingCommandConfig<TItem>()
             {
                 Collection = collection,
-                Static = GetConfiguration<TCommand>(connection)
+                Static = GetConfiguration(commandType, connection)
             };
         }
     }

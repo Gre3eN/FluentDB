@@ -11,25 +11,27 @@ namespace FluentDB.Services.Multiple
     {
         private readonly IEnumerable<TItem> collection;
 
+        private Type optionalCommandType;
+
         internal MultipleQuery(IEnumerable<TItem> collection)
         {
             this.collection = collection ?? throw new ArgumentNullException(nameof(collection));
         }
 
-        public MultipleQuery<TItem, TCommand> Using<TCommand>() where TCommand : DbCommand, new()
+        public MultipleQuery<TItem> Using<TCommand>() where TCommand : DbCommand, new()
         {
-            return new MultipleQuery<TItem, TCommand>(collection);
+            optionalCommandType = typeof(TCommand);
+            return this;
         }
-    }
 
-    public class MultipleQuery<TItem, TCommand>
-        where TCommand : DbCommand, new()
-    {
-        internal IEnumerable<TItem> Collection { get; }
-
-        internal MultipleQuery(IEnumerable<TItem> collection)
+        public IMultipleQueryable<TItem> With(string connectionString)
         {
-            Collection = collection ?? throw new ArgumentNullException(nameof(collection));
+            return QueryableFactory.NewMultiple(collection, optionalCommandType, connectionString);
+        }
+
+        public IMultipleQueryable<TItem> WithDefaultConnection()
+        {
+            return QueryableFactory.NewMultiple(collection, optionalCommandType);
         }
     }
 }

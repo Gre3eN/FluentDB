@@ -6,10 +6,10 @@ using System.Text;
 
 namespace FluentDB.Services.Multiple
 {
-    public interface IMultipleConfigureQueryable<TItem, TParam> where TParam : DbParameter
+    public interface IMultipleConfigureQueryable<TItem>
     {
-        IMultipleConfigureQueryable<TItem, TParam> CommandType(CommandType type);
-        IMultipleParameterQueryable<TItem, TParam> WithParameters();
+        IMultipleConfigureQueryable<TItem> CommandType(CommandType type);
+        IParameterQueryable<TItem> WithParameters();
         IRunMultiple Run();
     }
 }

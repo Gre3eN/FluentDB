@@ -5,8 +5,8 @@ using System.Text;
 
 namespace FluentDB.Services
 {
-    public interface INewQueryable<TParam> where TParam : DbParameter
+    public interface INewQueryable
     {
-        IConfigureQueryable<TParam> For(string queryText);
+        IConfigureQueryable For(string queryText);
     }
 }

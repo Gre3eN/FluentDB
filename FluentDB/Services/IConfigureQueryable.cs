@@ -6,10 +6,10 @@ using System.Text;
 
 namespace FluentDB.Services
 {
-    public interface IConfigureQueryable<TParam> where TParam : DbParameter
+    public interface IConfigureQueryable
     {
-        IConfigureQueryable<TParam> CommandType(CommandType type);
-        ISingleParameterQueryable<TParam> WithParameters();
+        IConfigureQueryable CommandType(CommandType type);
+        IFirstParameterQueryable WithParameters();
         IResult Run();
     }
 }

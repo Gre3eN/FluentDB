@@ -1,4 +1,5 @@
 ﻿using FluentDB.Command;
+using FluentDB.Helper;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -7,66 +8,88 @@ using System.Text;
 
 namespace FluentDB.Services.Multiple
 {
-    public class MultipleQueryable<TItem, TCommand, TCon, TTrans, TParam, TDbEx>
-        : IMultipleQueryable<TItem, TParam>,
-        IMultipleConfigureQueryable<TItem, TParam>,
-        IMultipleParameterQueryable<TItem, TParam>,
+    public class MultipleQueryable<TItem>
+        : IMultipleQueryable<TItem>,
+        IMultipleConfigureQueryable<TItem>,
+        IFirstParameterQueryable<TItem>,
+        IParameterQueryable<TItem>,
         IRunMultiple
-        where TCommand : DbCommand, new()
-        where TCon : DbConnection, new()
-        where TTrans : DbTransaction
-        where TParam : DbParameter
-        where TDbEx : DbException
     {
-        private readonly IteratingCommandEngine<TItem, TCommand, TCon, TDbEx> commandEngine;
+        private readonly IteratingCommandEngine<TItem> commandEngine;
+
+        private string currentParamId;
 
         public Dictionary<string, DbParameter> Parameters { get; }
 
-        public MultipleQueryable(IteratingCommandEngine<TItem, TCommand, TCon, TDbEx> commandEngine)
+        public MultipleQueryable(IteratingCommandEngine<TItem> commandEngine)
         {
             this.commandEngine = commandEngine ?? throw new ArgumentNullException(nameof(commandEngine));
             Parameters = new Dictionary<string, DbParameter>();
         }
 
-        public IMultipleConfigureQueryable<TItem, TParam> For(string queryText)
+        public IMultipleConfigureQueryable<TItem> For(string queryText)
         {
             commandEngine.AddConfiguration(command => command.CommandText = queryText);
             return this;
         }
 
-        public IMultipleConfigureQueryable<TItem, TParam> CommandType(CommandType type)
+        public IMultipleConfigureQueryable<TItem> CommandType(CommandType type)
         {
             commandEngine.AddConfiguration(command => command.CommandType = type);
             return this;
         }
 
-        public IMultipleParameterQueryable<TItem, TParam> WithParameters()
+        public IParameterQueryable<TItem> WithParameters()
         {
             return this;
         }
 
-        public IMultipleParameterQueryable<TItem, TParam> Parameter(string paramId, 
-            Action<TParam, TItem> configure)
+        public IParameterQueryable<TItem> Parameter(string paramId, Func<TItem, object> createValue)
         {
+            currentParamId = paramId;
             commandEngine.AddParamConfiguration((command, item) =>
             {
+                var value = createValue(item);
                 if (command.Parameters.Contains(paramId))
                 {
-                    configure((TParam)command.Parameters[paramId], item);
+
+                    command.Parameters[paramId].Value = value;
+                    command.Parameters[paramId].DbType = TypeConverter.DbTypeFrom(value.GetType());
                 }
                 else
                 {
                     var parameter = command.CreateParameter();
-                    configure((TParam)parameter, item);
+                    parameter.ParameterName = paramId;
+                    parameter.Value = value;
+                    parameter.DbType = TypeConverter.DbTypeFrom(value.GetType());
                     command.Parameters.Add(parameter);
                 }
             });
             return this;
         }
 
+        public IParameterQueryable<TItem> ExplicitType(DbType type)
+        {
+            commandEngine.AddConfiguration(command => command.Parameters[currentParamId].DbType = type);
+            return this;
+        }
+
+        public IParameterQueryable<TItem> Direction(ParameterDirection direction)
+        {
+            commandEngine.AddConfiguration(command => command.Parameters[currentParamId].Direction = direction);
+            return this;
+        }
+
+        internal IParameterQueryable<TItem> ConfigureCurrentParameter<TParam>(Action<TParam> configure)
+            where TParam : DbParameter
+        {
+            commandEngine.AddConfiguration(command => configure((TParam)command.Parameters[currentParamId]));
+            return this;
+        }
+
         public IRunMultiple Run()
         {
-            throw new NotImplementedException();
+            return this;
         }
 
         public void AsNonQuery()

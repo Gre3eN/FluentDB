@@ -5,8 +5,8 @@ using System.Text;
 
 namespace FluentDB.Command
 {
-    public interface IReturnCommandEngine<TCommand> where TCommand : DbCommand, new()
+    public interface IReturnCommandEngine
     {
-        T Run<T>(Func<TCommand, T> commandFunction);
+        T Run<T>(Func<DbCommand, T> commandFunction);
     }
 }

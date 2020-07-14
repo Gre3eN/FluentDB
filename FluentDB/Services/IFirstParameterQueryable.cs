@@ -6,9 +6,9 @@ using System.Text;
 
 namespace FluentDB.Services
 {
-    public interface ISingleParameterQueryable<TParam> where TParam : DbParameter
+    public interface IFirstParameterQueryable
     {
-        ISingleParameterQueryable<TParam> Parameter(Action<TParam> configure);
+        IParameterQueryable Parameter(string paramId, object value);
         IResult Run();
     }
 }

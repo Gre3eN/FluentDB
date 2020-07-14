@@ -3,9 +3,9 @@ using System.Data.Common;
 
 namespace FluentDB.Command
 {
-    public interface ICommandEngine<TCommand> where TCommand : DbCommand, new()
+    public interface ICommandEngine
     {
-        void AddConfiguration(Action<TCommand> configuration);
-        void Run(Action<TCommand> commandAction);
+        void AddConfiguration(Action<DbCommand> configuration);
+        void Run(Action<DbCommand> commandAction);
     }
 }

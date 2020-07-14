@@ -6,7 +6,7 @@ using System.Data.Common;
 using System.Data.SqlClient;
 using System.Text;
 
-namespace FluentDB.Extensions.DbSpecific
+namespace FluentDB.Extensions
 {
     public static class IEnumerableExtension
     {

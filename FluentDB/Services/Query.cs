@@ -1,18 +1,45 @@
 ﻿using FluentDB.Command;
+using FluentDB.Factories;
 using FluentDB.Services.Multiple;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Linq;
 using System.Text;
 
 namespace FluentDB.Services
 {
-    public class Query<TCommand> where TCommand : DbCommand, new()
+    public class Query
     {
-        public static Query<TCommand> New()
+        private readonly Type optionalCommandType;
+
+        public Query()
         {
-            return new Query<TCommand>();
+            optionalCommandType = null;
+        }
+
+        public Query(Type optionalCommandType)
+        {
+            this.optionalCommandType = optionalCommandType;
+        }
+
+        public static Query New()
+        {
+            return new Query();
+        }
+
+        public static Query New<TCommand>() where TCommand : DbCommand, new()
+        {
+            return new Query(typeof(TCommand));
+        }
+
+        public INewQueryable WithDefaultConnection()
+        {
+            return QueryableFactory.New(optionalCommandType);
+        }
+
+        public INewQueryable With(string connectionString)
+        {
+            return QueryableFactory.New(optionalCommandType, connectionString);
         }
     }
 }

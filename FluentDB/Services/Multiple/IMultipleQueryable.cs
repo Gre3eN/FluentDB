@@ -5,8 +5,8 @@ using System.Text;
 
 namespace FluentDB.Services.Multiple
 {
-    public interface IMultipleQueryable<TItem, TParam> where TParam : DbParameter
+    public interface IMultipleQueryable<TItem>
     {
-        IMultipleConfigureQueryable<TItem, TParam> For(string queryText);
+        IMultipleConfigureQueryable<TItem> For(string queryText);
     }
 }
