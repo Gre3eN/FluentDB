@@ -5,7 +5,7 @@ using System.Text;
 
 namespace FluentDB.Helper
 {
-    public static class TypeConverter
+    public static class DbTypeConverter
     {
         private static readonly Dictionary<Type, DbType> typeMap = new Dictionary<Type, DbType>
         {
@@ -46,7 +46,7 @@ namespace FluentDB.Helper
             //{ typeof(System.Data.Linq.Binary), DbType.Binary },
         };
 
-        public static DbType DbTypeFrom(Type type)
+        public static DbType From(Type type)
         {
             return typeMap[type];
         }

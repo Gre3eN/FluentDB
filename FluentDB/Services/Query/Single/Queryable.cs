@@ -8,7 +8,7 @@ using System.Text;
 
 namespace FluentDB.Services
 {
-    public class Queryable
+    internal class Queryable
         : INewQueryable, 
         IConfigureQueryable,
         IFirstParameterQueryable,
@@ -21,7 +21,7 @@ namespace FluentDB.Services
 
         public Dictionary<string, DbParameter> Parameters { get; }
 
-        public Queryable(CommandEngine commandEngine)
+        internal Queryable(CommandEngine commandEngine)
         {
             this.commandEngine = commandEngine ?? throw new ArgumentNullException(nameof(commandEngine));
             Parameters = new Dictionary<string, DbParameter>();
@@ -46,12 +46,14 @@ namespace FluentDB.Services
 
         public IParameterQueryable Parameter(string paramId, object value)
         {
+            currentParamId = paramId;
+
             commandEngine.AddConfiguration(command =>
             {
                 var param = command.CreateParameter();
                 param.ParameterName = paramId;
                 param.Value = value;
-                param.DbType = TypeConverter.DbTypeFrom(value.GetType());
+                param.DbType = DbTypeConverter.From(value.GetType());
                 command.Parameters.Add(param);
                 Parameters.Add(param.ParameterName, param);
             });
@@ -73,7 +75,13 @@ namespace FluentDB.Services
         internal IParameterQueryable ConfigureCurrentParameter<TParam>(Action<TParam> configure)
             where TParam : DbParameter
         {
-            commandEngine.AddConfiguration(command => configure((TParam)command.Parameters[currentParamId]));
+            commandEngine.AddConfiguration(command =>
+            {
+                if (command.Parameters[currentParamId] is TParam param)
+                {
+                    configure(param);
+                }
+            });
             return this;
         }
 

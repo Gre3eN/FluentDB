@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Data.OleDb;
 using System.Data.SqlClient;
 using System.Text;
 
@@ -8,23 +9,15 @@ namespace FluentDB.Factories
 {
     public static class ConnectionFactory
     {
-        private static readonly Dictionary<Type, IConnectionFactory> factoryTypeMap = new Dictionary<Type, IConnectionFactory>
+        private static readonly Dictionary<Type, Func<string, DbConnection>> connectionTypeMap = new Dictionary<Type, Func<string, DbConnection>>
         {
-            { typeof(SqlCommand), new ConnectionFactory<SqlConnection>() }
+            { typeof(SqlCommand), conStr => new SqlConnection(conStr) },
+            { typeof(OleDbCommand), conStr => new OleDbConnection(conStr) }
         };
 
-        public static IConnectionFactory New(Type commandType)
+        public static DbConnection New(Type commandType, string connectionStr)
         {
-            return factoryTypeMap[commandType];
-        }
-    }
-
-    public class ConnectionFactory<TCon> : IConnectionFactory 
-        where TCon : DbConnection, new()
-    {
-        public DbConnection Create(string connection)
-        {
-            return new TCon() { ConnectionString = connection };
+            return connectionTypeMap[commandType](connectionStr);
         }
     }
 }

@@ -6,20 +6,14 @@ using System.Text;
 
 namespace FluentDB.Command
 {
-    public class IteratingCommandEngine<TItem> : ICommandEngine
+    internal class IteratingCommandEngine<TItem> : ICommandEngine
     {
-        private readonly ICommandFactory commandFactory;
-        private readonly IConnectionFactory connectionFactory;
         private readonly IteratingCommandConfig<TItem> commandConfig;
         private readonly List<Action<DbCommand>> configurations;
         private readonly List<Action<DbCommand, TItem>> paramConfiguration;
 
-        public IteratingCommandEngine(ICommandFactory commandFactory, 
-            IConnectionFactory connectionFactory, 
-            IteratingCommandConfig<TItem> commandConfig)
+        internal IteratingCommandEngine(IteratingCommandConfig<TItem> commandConfig)
         {
-            this.commandFactory = commandFactory ?? throw new ArgumentNullException(nameof(commandFactory));
-            this.connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
             this.commandConfig = commandConfig ?? throw new ArgumentNullException(nameof(commandConfig));
             configurations = new List<Action<DbCommand>>();
             paramConfiguration = new List<Action<DbCommand, TItem>>();
@@ -39,21 +33,48 @@ namespace FluentDB.Command
         {
             try
             {
-                using var command = commandFactory.Create();
+                using var command = CommandFactory.New(commandConfig.Static.CommandType);
                 configurations.ForEach(c => c(command));
-                using var connection = command.Connection
-                    ?? connectionFactory.Create(commandConfig.Static.ConnectionString); 
-                connection.Open();
-                foreach (var item in commandConfig.Collection)
+                if (SetTransactionIfPossible(command))
                 {
-                    paramConfiguration.ForEach(c => c(command, item));
-                    commandAction(command);
+                    ExecuteCommandAction(command, commandAction);
+                }
+                else
+                {
+                    using var connection = ConnectionFactory.New(
+                        commandConfig.Static.CommandType, commandConfig.Static.ConnectionString);
+                    connection.Open();
+                    using var transaction = connection.BeginTransaction();
+                    command.Transaction = transaction;
+                    command.Connection = connection;
+                    ExecuteCommandAction(command, commandAction);
+                    transaction.Commit();
                 }
             }
             catch (DbException ex)
             {
                 throw ex;
                 //TODO
+            }
+        }
+
+        private bool SetTransactionIfPossible(DbCommand command)
+        {
+            if (commandConfig.Static.Transaction != null)
+            {
+                command.Transaction = commandConfig.Static.Transaction;
+                command.Connection = commandConfig.Static.Transaction.Connection;
+                return true;
+            }
+            return false;
+        }
+
+        private void ExecuteCommandAction(DbCommand command, Action<DbCommand> commandAction)
+        {
+            foreach (var item in commandConfig.Collection)
+            {
+                paramConfiguration.ForEach(c => c(command, item));
+                commandAction(command);
             }
         }
     }

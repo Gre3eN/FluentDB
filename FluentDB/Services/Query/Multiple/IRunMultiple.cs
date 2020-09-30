@@ -6,6 +6,9 @@ namespace FluentDB.Services.Multiple
 {
     public interface IRunMultiple
     {
+        /// <summary>
+        /// Runs the query.
+        /// </summary>
         void AsNonQuery();
     }
 }

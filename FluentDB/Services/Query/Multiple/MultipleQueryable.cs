@@ -8,7 +8,7 @@ using System.Text;
 
 namespace FluentDB.Services.Multiple
 {
-    public class MultipleQueryable<TItem>
+    internal class MultipleQueryable<TItem>
         : IMultipleQueryable<TItem>,
         IMultipleConfigureQueryable<TItem>,
         IFirstParameterQueryable<TItem>,
@@ -21,7 +21,7 @@ namespace FluentDB.Services.Multiple
 
         public Dictionary<string, DbParameter> Parameters { get; }
 
-        public MultipleQueryable(IteratingCommandEngine<TItem> commandEngine)
+        internal MultipleQueryable(IteratingCommandEngine<TItem> commandEngine)
         {
             this.commandEngine = commandEngine ?? throw new ArgumentNullException(nameof(commandEngine));
             Parameters = new Dictionary<string, DbParameter>();
@@ -39,7 +39,7 @@ namespace FluentDB.Services.Multiple
             return this;
         }
 
-        public IParameterQueryable<TItem> WithParameters()
+        public IFirstParameterQueryable<TItem> WithParameters()
         {
             return this;
         }
@@ -52,16 +52,15 @@ namespace FluentDB.Services.Multiple
                 var value = createValue(item);
                 if (command.Parameters.Contains(paramId))
                 {
-
                     command.Parameters[paramId].Value = value;
-                    command.Parameters[paramId].DbType = TypeConverter.DbTypeFrom(value.GetType());
+                    command.Parameters[paramId].DbType = DbTypeConverter.From(value.GetType());
                 }
                 else
                 {
                     var parameter = command.CreateParameter();
                     parameter.ParameterName = paramId;
                     parameter.Value = value;
-                    parameter.DbType = TypeConverter.DbTypeFrom(value.GetType());
+                    parameter.DbType = DbTypeConverter.From(value.GetType());
                     command.Parameters.Add(parameter);
                 }
             });
@@ -83,7 +82,13 @@ namespace FluentDB.Services.Multiple
         internal IParameterQueryable<TItem> ConfigureCurrentParameter<TParam>(Action<TParam> configure)
             where TParam : DbParameter
         {
-            commandEngine.AddConfiguration(command => configure((TParam)command.Parameters[currentParamId]));
+            commandEngine.AddConfiguration(command => 
+            {
+                if (command.Parameters[currentParamId] is TParam param)
+                {
+                    configure(param);
+                }
+            });
             return this;
         }
 

@@ -2,26 +2,17 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Diagnostics.CodeAnalysis;
-using System.Reflection.Metadata;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace FluentDB.Command
 {
-    public class CommandEngine : ICommandEngine, IReturnCommandEngine
+    internal class CommandEngine : ICommandEngine, IReturnCommandEngine
     {
-        private readonly ICommandFactory commandFactory;
-        private readonly IConnectionFactory connectionFactory;
         private readonly StaticCommandConfig commandConfig;
         private readonly List<Action<DbCommand>> configurations;
 
-        public CommandEngine(ICommandFactory commandFactory, 
-            IConnectionFactory connectionFactory, 
-            StaticCommandConfig commandConfig)
+        internal CommandEngine(StaticCommandConfig commandConfig)
         {
-            this.commandFactory = commandFactory ?? throw new ArgumentNullException(nameof(commandFactory));
-            this.connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
             this.commandConfig = commandConfig ?? throw new ArgumentNullException(nameof(commandConfig));
             configurations = new List<Action<DbCommand>>();
         }
@@ -35,12 +26,19 @@ namespace FluentDB.Command
         {
             try
             {
-                using var command = commandFactory.Create();
+                using var command = CommandFactory.New(commandConfig.CommandType);
                 configurations.ForEach(c => c(command));
-                using var connection = command.Connection
-                    ?? connectionFactory.Create(commandConfig.ConnectionString);
-                connection.Open();
-                commandAction(command);
+                if (SetTransactionIfPossible(command))
+                {
+                    commandAction(command);
+                }
+                else
+                {
+                    using var connection = ConnectionFactory.New(commandConfig.CommandType, commandConfig.ConnectionString);
+                    connection.Open();
+                    command.Connection = connection;
+                    commandAction(command);
+                }
             }
             catch (DbException ex)
             {
@@ -53,12 +51,19 @@ namespace FluentDB.Command
         {
             try
             {
-                using var command = commandFactory.Create();
+                using var command = CommandFactory.New(commandConfig.CommandType);
                 configurations.ForEach(c => c(command));
-                using var connection = command.Connection
-                    ?? connectionFactory.Create(commandConfig.ConnectionString);
-                connection.Open();
-                return commandFunction(command);
+                if (SetTransactionIfPossible(command))
+                {
+                    return commandFunction(command);
+                }
+                else
+                {
+                    using var connection = ConnectionFactory.New(commandConfig.CommandType, commandConfig.ConnectionString);
+                    connection.Open();
+                    command.Connection = connection;
+                    return commandFunction(command);
+                }
             }
             catch (DbException ex)
             {
@@ -66,6 +71,17 @@ namespace FluentDB.Command
                 //TODO
                 //throw new InvalidOperationException();
             }
+        }
+
+        private bool SetTransactionIfPossible(DbCommand command)
+        {
+            if (commandConfig.Transaction != null)
+            {
+                command.Transaction = commandConfig.Transaction;
+                command.Connection = commandConfig.Transaction.Connection;
+                return true;
+            }
+            return false;
         }
     }
 }
